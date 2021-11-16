@@ -34,7 +34,7 @@ def main():
     # Using the stochastic_gradient_decent show it works on a small least squares example (??) with plots
 
     # todo 1.3
-    # use SGD on the softmax example, with graphs after each epoch...998989898 9898989899898
+    # use SGD on the softmax example, with graphs after each epoch...
     pass
 
 
