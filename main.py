@@ -20,7 +20,8 @@ def soft_max_regression(j_category, x_sample, weights_matrix, l_categories_size)
     return numerator / denominator
 
 
-# receives weights_matrix - all weights (in matrix form?), class_hot_one_vector_matrix - hot one vectors of class for each sample,
+# receives weights_matrix - all weights (in matrix form),
+# class_hot_one_vector_matrix - hot one vectors of class for each sample,
 # x_all_data - all of the samples in matrix form, l_categories_size - number of categories/labels,
 # m_sample_size - number of samples
 # returns the average error of the current weights, this we will want to minimize
@@ -42,14 +43,28 @@ def soft_max_loss(weights_matrix, class_hot_one_vector_matrix, x_all_data, l_cat
     return -1 * error_sum / m_sample_size
 
 
-
-
-# receives w - all weights (in matrix form?), c - hot one vectors, x - all of the samples in matrix form,
-# m - number of samples, p - index of specific weight
+# receives weights_matrix - all weights (in matrix form),
+# class_hot_one_vector_matrix - hot one vectors of class for each sample,
+# x_all_data - all of the samples in matrix form, l_categories_size - number of categories/labels,
+# m_sample_size - number of samples, p - index of specific weight
 # returns the gradient of weight p
-def soft_max_gradient_of_weights(m, x, w, c, p):
-    pass
-    # understand how to use it, is it per weight?
+def soft_max_gradient_of_weight_p(weights_matrix, class_hot_one_vector_matrix, x_all_data, l_categories_size,
+                                  m_sample_size, p_index_of_weight):
+    x_t = np.transpose(x_all_data)
+    numerator = np.exp(x_t @ weights_matrix[:, [p_index_of_weight]])
+
+    denominator = np.exp(x_t @ weights_matrix[:, [0]])
+    for j in range(1, l_categories_size):
+        denominator += np.exp(x_t @ weights_matrix[:, [j]])
+
+    divide_result = numerator / denominator
+    # todo not sure about the transpose but let's see... suppose to be the indicator vector
+    class_row = class_hot_one_vector_matrix[p_index_of_weight]
+    class_p = np.transpose(np.atleast_2d(class_row))
+    inner_parentheses = divide_result - class_p
+    product = x_all_data @ inner_parentheses
+    return product / m_sample_size
+
 
 
 def main():
@@ -68,7 +83,12 @@ def main():
                              [1, 2, 3]])
     l_categories_size = 3
     m_sample_size = 3
-    print(soft_max_loss(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size))
+    # print(soft_max_loss(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size))
+
+    p_index_of_weight = 0
+    print(soft_max_gradient_of_weight_p(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size, p_index_of_weight))
+    print(soft_max_gradient_of_weight_p(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size, 1))
+    print(soft_max_gradient_of_weight_p(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size, 2))
 
 
     # todo 1.1
