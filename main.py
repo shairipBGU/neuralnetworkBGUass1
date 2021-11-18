@@ -29,7 +29,7 @@ def soft_max_loss(weights_matrix, class_hot_one_vector_matrix, x_all_data, l_cat
     x_t = np.transpose(x_all_data)
     error_sum = 0
     for k in range(l_categories_size):
-        # todo probably need to do safe exp calculation here too, (but what is a maximum on a vector?)
+        # todo probably need to do safe exp calculation here too, (but what is a maximum on a vector? eran said it is the maximum element in all of the vectors)
         numerator = np.exp(x_t @ weights_matrix[:, [k]])
 
         denominator = np.exp(x_t @ weights_matrix[:, [0]])
@@ -60,7 +60,7 @@ def soft_max_gradient_of_weight_p(weights_matrix, class_hot_one_vector_matrix, x
     divide_result = numerator / denominator
     # todo not sure about the transpose but let's see... suppose to be the indicator vector
     class_row = class_hot_one_vector_matrix[p_index_of_weight]
-    class_p = np.transpose(np.atleast_2d(class_row))
+    class_p = np.transpose(np.atleast_2d(class_row)) #should be very big, a vector with lot's of zeros and ones (~25,000)
     inner_parentheses = divide_result - class_p
     product = x_all_data @ inner_parentheses
     return product / m_sample_size
