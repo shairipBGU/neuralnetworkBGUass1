@@ -1,95 +1,150 @@
-import math
 import numpy as np
+import matplotlib.pyplot as plot
+import random
 
-
-# receives weights_matrix - all weights (in matrix form?), j_category - the label we want to check zero based,
-# x_sample - the sample, l_categories_size - number of categories
-# returns a probability of how much the classifier is sure the x_sample label(y) is j_category  between 0 - 1 for the sample
-def soft_max_regression(j_category, x_sample, weights_matrix, l_categories_size):
-    max_xtw_value = 0
-    for i in range(l_categories_size):
-        max_temp = np.transpose(x_sample) @ weights_matrix[:, [i]]
-        if max_temp > max_xtw_value:
-            max_xtw_value = max_temp
-
-    numerator = math.exp(np.transpose(x_sample) @ weights_matrix[:, [j_category]] - max_xtw_value)
-    denominator = 0
-    for i in range(l_categories_size):
-        denominator += math.exp(np.transpose(x_sample) @ weights_matrix[:, [i]] - max_xtw_value)
-
-    return numerator / denominator
-
+# receives weights_matrix - all weights (in matrix form)
+# returns a probability of how much the classifier is sure the x_sample label(y)
+# is j_category  between 0 - 1 for the sample
+def soft_max_func(weights_matrix):
+    numerator = np.exp(weights_matrix)
+    return np.divide(numerator, np.sum(numerator, axis=0, keepdims=True))
 
 # receives weights_matrix - all weights (in matrix form),
 # class_hot_one_vector_matrix - hot one vectors of class for each sample,
-# x_all_data - all of the samples in matrix form, l_categories_size - number of categories/labels,
 # m_sample_size - number of samples
 # returns the average error of the current weights, this we will want to minimize
-def soft_max_loss(weights_matrix, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size):
-    x_t = np.transpose(x_all_data)
-    error_sum = 0
-    for k in range(l_categories_size):
-        # todo probably need to do safe exp calculation here too, (but what is a maximum on a vector? eran said it is the maximum element in all of the vectors)
-        numerator = np.exp(x_t @ weights_matrix[:, [k]])
-
-        denominator = np.exp(x_t @ weights_matrix[:, [0]])
-        for j in range(1, l_categories_size):
-            denominator += np.exp(x_t @ weights_matrix[:, [j]])
-
-        divide_result = numerator / denominator
-        inner_parentheses = np.log(divide_result)
-        error_sum += np.transpose(class_hot_one_vector_matrix[k]) @ inner_parentheses
-
+def soft_max_loss(weights_matrix, class_hot_one_vector_matrix, m_sample_size):
+    inner_log_calc = np.log(soft_max_func(weights_matrix))
+    error_sum = np.sum(class_hot_one_vector_matrix * inner_log_calc, keepdims=True)
     return -1 * error_sum / m_sample_size
 
+# here we want to return the the gradiant of the wieghts matrix respect to b and w
+# we take the wight matrix  and teh number of sampels and teh vez and teh hot vec
+#we return a list were we calculate respect to w and respect to b
+#the returned list[0] its respect to be and the returned list[1] si respect to w
+def grad_func(weights_matrix, vec, m_sample_size, class_hot_one_vector_matrix):
+    cons = np.divide(1, m_sample_size)
+    prod = (soft_max_func(weights_matrix) - class_hot_one_vector_matrix)
+    res_respect_to_b = cons * prod
+    res_respect_to_w = cons*(np.dot(vec, prod.T))
+    res_list = [res_respect_to_b, res_respect_to_w]
+    return res_list
 
-# receives weights_matrix - all weights (in matrix form),
-# class_hot_one_vector_matrix - hot one vectors of class for each sample,
-# x_all_data - all of the samples in matrix form, l_categories_size - number of categories/labels,
-# m_sample_size - number of samples, p - index of specific weight
-# returns the gradient of weight p
-def soft_max_gradient_of_weight_p(weights_matrix, class_hot_one_vector_matrix, x_all_data, l_categories_size,
-                                  m_sample_size, p_index_of_weight):
-    x_t = np.transpose(x_all_data)
-    numerator = np.exp(x_t @ weights_matrix[:, [p_index_of_weight]])
+def yacob_grad_test_func():
+    print(" need to be done, understand what they mean and meet burak for it")
 
-    denominator = np.exp(x_t @ weights_matrix[:, [0]])
-    for j in range(1, l_categories_size):
-        denominator += np.exp(x_t @ weights_matrix[:, [j]])
+# we dont want to get a 11 or 00 vec we ned 01 or 10, this will correct if there is a mistake.
+def corrector(c, len):
+    print(c)
+    for i in range(0, len):
+        if c[:, i][0] == 0.0:
+            c[:, i][1] = 1.0
+        else:
+            c[:, i][1] = 0.0
 
-    divide_result = numerator / denominator
-    # todo not sure about the transpose but let's see... suppose to be the indicator vector
-    class_row = class_hot_one_vector_matrix[p_index_of_weight]
-    class_p = np.transpose(np.atleast_2d(class_row)) #should be very big, a vector with lot's of zeros and ones (~25,000)
-    inner_parentheses = divide_result - class_p
-    product = x_all_data @ inner_parentheses
-    return product / m_sample_size
 
+    return c
+
+def sgd_func():
+    training_set, validation_set, a, l,counter  = 1000, 200, 4, 2,0
+    total_set = training_set + validation_set
+    W = np.random.randn(a, l)
+    b = np.random.randn(l, 1)
+    dataset = np.random.randn(a, total_set)
+
+    training_dat = dataset[:, 0:training_set]
+    training_class = np.random.choice([0, 1], size=(l, training_set))
+    training_class = corrector(training_class,len(training_class.T))
+    validation_dat = dataset[:, training_set:total_set]
+    val_cl = np.random.choice([0, 1], size=(l, validation_set))
+    val_cl = corrector(val_cl,len(val_cl.T))
+
+    res_x, res_y_succ_train, res_y__succ_validate, learning_rate= [], [], [], 0.001
+    for count in range(0, 100):
+        training_success,validation_success = 0,0
+        for dat in range(0, len(training_dat[0])):
+            the_dat,class_dat = training_dat[:, dat].reshape(a, 1), training_class[:, dat].reshape(l, 1)
+            S = soft_max_func(np.dot(W.T, the_dat) + b)
+            if(S[0] >= 0.5):
+                S[0] = 1
+            else:
+                S[0] = 0
+            if (S[1] < 0.5):
+                S[1] = 0
+            else:
+                S[1] = 1
+            if S[0] == class_dat[0][0]:
+                training_success += 1
+            training_set = 1
+            b = b - learning_rate * grad_func(np.dot(W.T, the_dat) + b,the_dat ,training_set, class_dat)[0]
+            W = W - learning_rate * grad_func(np.dot(W.T, the_dat) + b, the_dat, training_set, class_dat)[1]
+        for dat in range(0, len(validation_dat[0])):
+            the_dat = validation_dat[:, dat].reshape(a, 1)
+            class_dat = val_cl[:, dat].reshape(l, 1)
+            S_val = soft_max_func(np.dot(W.T, the_dat) + b)
+            if(S_val[0] >= 0.5):
+                S_val[0] = 1
+            else:
+                S_val[0] = 0
+
+            if (S_val[1] < 0.5):
+                S_val[1] = 0
+            else:
+                S_val[1] = 1
+            if S_val[0] == class_dat[0][0]:
+                validation_success += 1
+
+        t_suc =  np.divide(training_success,len(training_dat[0]))
+        res_y_succ_train = res_y_succ_train + [t_suc]
+        v_suc = np.divide(validation_success,len(validation_dat[0]))
+        res_y__succ_validate = res_y__succ_validate + [v_suc]
+        res_x = res_x + [count]
+    plot.xlabel('Epoc')
+    plot.ylabel('Success Rate')
+    plot.title('sgd_func (learning rate=0.001)')
+    plot.plot(res_x, res_y_succ_train,  label='Training')
+    plot.plot(res_x, res_y__succ_validate,  label='Validation')
+    plot.legend()
+    plot.show()
+
+# def f(x):  # the equivlant in julia:  F = x -> 0.5*dot(x,x) -> means return / dot(x,x) this compute steh product betwen
+#     # two vectors and returns a scalar. https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/
+#     return 0.5 * (x @ x)
+#
+# def g_f(x):  # g_F = x->x
+#     return x
+#
+# def gradiant_test_ver():
+#     n = 20
+#     x = np.random.randn(n)
+#     d = np.random.randn(n)
+#     epsilon = 0.1
+#     f0 = f(x)
+#     g0 = g_f(x)
+#     y0 = np.zeros(8)
+#     y1 = np.zeros(8)
+#     print(("k\terror order 1 \t\t error order 2"))
+#     for k in range(1, 8):
+#         epsk = epsilon * (0.5 ** k)
+#         fk = f(x + epsk * d)
+#         f1 = f0 + epsk * (g0 @ d)
+#         y0[k] = abs(fk - f0)
+#         y1[k] = abs(fk - f1)
+#         print(k, "\t", abs(fk - f0), "\t", abs(fk - f1))
+#
+#     plot.semilogy(np.arange(1, 9, 1), y0)  # collect(1:8) =  np.arange(1, 8, 1)
+#     plot.semilogy(np.arange(1, 9, 1), y1)
+#
+#     plot.legend(("Zero order approx", "First order approx"))
+#     plot.title("Successful Grad test in semilogarithmic plot")
+#     plot.xlabel("k")
+#     plot.ylabel('error')
+#     plot.show()
 
 
 def main():
-    weights = np.asarray([[1, 2, 3],
-                          [4, 5, 6],
-                          [7, 8, 9]])
-
-    x_sample = np.asarray([2, 2, 2])
-    j_category = 2
-
-    # print(round(soft_max_regression(j_category, x_sample, weights, 3), 4))
-
-    class_hot_one_vector_matrix = np.eye(3)
-    x_all_data = np.asarray([[1, 2, 3],
-                             [1, 2, 3],
-                             [1, 2, 3]])
-    l_categories_size = 3
-    m_sample_size = 3
-    # print(soft_max_loss(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size))
-
-    p_index_of_weight = 0
-    print(soft_max_gradient_of_weight_p(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size, p_index_of_weight))
-    print(soft_max_gradient_of_weight_p(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size, 1))
-    print(soft_max_gradient_of_weight_p(weights, class_hot_one_vector_matrix, x_all_data, l_categories_size, m_sample_size, 2))
-
+    print("ok")
+    sgd_func()
 
     # todo 1.1
     # todo write soft_max_loss - don't forget to add bias to the weights
